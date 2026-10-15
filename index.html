@@ -4277,7 +4277,7 @@ function subAutoText(sub, isAdmin){
         : 'Set by the Admin. On the renewal date ' + price + ' is deducted from the Admin\'s wallet automatically, so no renewal request is needed. The balance may go negative if funds are low.';
     return isAdmin
         ? 'Auto-Renewal is OFF, so you must accept each renewal request yourself. <b>Turn it ON</b> and the plan fee is deducted from your wallet automatically on the Next Renewal date — no request to accept, no risk of missing the date, and your dashboard is never restricted. If you leave it OFF and do not accept within 5 days after expiry, new registrations, student work and fees are blocked.'
-        : 'Set by the Admin. On the renewal date the system sends the Admin a renewal request automatically. The Admin must accept it. If it is not accepted within 5 days after expiry, restrictions start on the Admin\'s dashboard.';
+        : 'Auto-Renewal is OFF (set by the Admin), so the Admin must accept each renewal request themselves. If the Admin turns it ON, the plan fee is deducted from the Admin\'s wallet automatically on the Next Renewal date — no request is needed and the Admin\'s dashboard is never restricted. While it stays OFF, if the Admin does not accept within 5 days after expiry, new registrations, student work and fees are blocked on the Admin\'s dashboard.'
 }
 function subCardHtml(sub, isAdmin, wallet){
     if (!sub || !sub.expiresAt) return '<div style="font-size:0.84rem;font-weight:800;color:#0369a1;margin-bottom:6px;">💳 Subscription</div><div style="font-size:0.74rem;color:#64748b;">No active subscription plan yet.</div>' + (isAdmin ? subPolicyHtml() : '');
