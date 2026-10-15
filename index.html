@@ -910,6 +910,14 @@
                 <label style="font-size:0.72rem;font-weight:800;color:var(--grey);">Subscription Plan</label>
                 <select id="sa-charge-plan" onchange="saChargePlanChanged()" style="width:100%;padding:11px;border-radius:10px;border:1.5px solid var(--border);font-size:0.82rem;margin-top:4px;"></select>
                 <div id="sa-charge-plan-info" style="font-size:0.7rem;color:#0369a1;font-weight:700;margin-top:6px;"></div>
+                <div id="sa-charge-disc-wrap" style="margin-top:10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:10px;">
+                    <div style="font-size:0.72rem;font-weight:800;color:#15803d;margin-bottom:6px;">🏷️ Discount Offer (optional)</div>
+                    <div style="display:flex;gap:8px;">
+                        <input type="text" id="sa-charge-disc-name" maxlength="40" placeholder="Offer name" oninput="saChargeCalc()" style="flex:2;min-width:0;padding:9px;border-radius:10px;border:1.5px solid var(--border);font-size:0.78rem;box-sizing:border-box;">
+                        <input type="number" id="sa-charge-disc-pct" min="0" max="99" step="0.1" placeholder="%" oninput="saChargeCalc()" style="flex:1;min-width:0;padding:9px;border-radius:10px;border:1.5px solid var(--border);font-size:0.78rem;box-sizing:border-box;">
+                    </div>
+                    <div id="sa-charge-disc-calc" style="font-size:0.7rem;font-weight:800;color:#166534;margin-top:7px;line-height:1.5;"></div>
+                </div>
             </div>
             <div id="sa-charge-paymode-wrap" style="display:none;margin-bottom:10px;">
                 <label style="font-size:0.72rem;font-weight:800;color:var(--grey);">Payment Mode</label>
@@ -1155,6 +1163,8 @@
                     <input type="number" id="sa-plan-price" min="1" placeholder="Price ₹" style="flex:1;min-width:0;padding:10px;border-radius:10px;border:1.5px solid var(--border);font-size:0.8rem;box-sizing:border-box;">
                     <input type="number" id="sa-plan-months" min="1" placeholder="Months" style="flex:1;min-width:0;padding:10px;border-radius:10px;border:1.5px solid var(--border);font-size:0.8rem;box-sizing:border-box;">
                 </div>
+                <div style="font-size:0.66rem;color:var(--grey);font-weight:700;margin:8px 0 4px;">Or set the duration in days (this replaces Months):</div>
+                <input type="number" id="sa-plan-days" min="1" placeholder="Duration (days) e.g. 180" style="width:100%;padding:10px;border-radius:10px;border:1.5px solid var(--border);font-size:0.8rem;box-sizing:border-box;">
                 <div style="font-size:0.7rem;font-weight:800;color:#15803d;margin:10px 0 6px;">🏷️ Discount Offer (optional)</div>
                 <div style="display:flex;gap:8px;">
                     <input type="text" id="sa-plan-disc-name" maxlength="40" placeholder="Offer name (e.g. Diwali Offer)" style="flex:2;min-width:0;padding:10px;border-radius:10px;border:1.5px solid var(--border);font-size:0.8rem;box-sizing:border-box;">
@@ -4133,12 +4143,21 @@ function saRenderPlans(){
     const a = saGetPlans();
     document.getElementById('sa-plans-list').innerHTML = a.length ? a.map(p => {
         const on = p.active !== false;
-        return `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;border:1px solid var(--border);border-radius:10px;padding:9px 11px;margin-bottom:6px;${on ? '' : 'background:#f8fafc;'}">
-            <div style="flex:1 1 120px;min-width:0;${on ? '' : 'opacity:.55;'}"><div style="font-size:0.8rem;font-weight:800;">${subEsc(p.name)}</div><div style="font-size:0.68rem;color:var(--grey);">${(() => { const n = subPlanNet(p); return n.pct ? '<s>₹' + p.price + '</s> <b style="color:#15803d;">₹' + n.net + '</b> <span style="background:#dcfce7;color:#166534;border-radius:20px;padding:1px 7px;font-weight:800;">🏷️ ' + subEsc(n.name) + ' ' + n.pct + '%</span>' : '₹' + p.price; })()} • ${p.months} month${p.months > 1 ? 's' : ''}</div></div>
-            <span style="font-size:0.62rem;font-weight:800;padding:3px 9px;border-radius:20px;color:#fff;background:${on ? '#16a34a' : '#94a3b8'};">${on ? 'Active' : 'Disabled'}</span>
-            <button style="border:none;background:${on ? '#fff7ed' : '#f0fdf4'};color:${on ? '#c2410c' : '#15803d'};padding:6px 10px;border-radius:8px;font-size:0.7rem;font-weight:800;cursor:pointer;" onclick="saTogglePlan('${p.id}')">${on ? 'Disable' : 'Enable'}</button>
-            <button style="border:none;background:#eff6ff;color:#1e40af;padding:6px 10px;border-radius:8px;font-size:0.7rem;font-weight:800;cursor:pointer;" onclick="saEditPlan('${p.id}')">Edit</button>
-            <button style="border:none;background:#fef2f2;color:#dc2626;padding:6px 10px;border-radius:8px;font-size:0.7rem;font-weight:800;cursor:pointer;" onclick="saDeletePlan('${p.id}')">Delete</button>
+        const n = subPlanNet(p);
+        return `<div style="border:1px solid var(--border);border-radius:12px;padding:11px 12px;margin-bottom:8px;${on ? '' : 'background:#f8fafc;'}">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
+                <div style="min-width:0;flex:1;${on ? '' : 'opacity:.55;'}">
+                    <div style="font-size:0.86rem;font-weight:800;word-break:break-word;">${subEsc(p.name)}</div>
+                    <div style="font-size:0.72rem;color:var(--grey);margin-top:2px;">${n.pct ? '<s>₹' + p.price + '</s> <b style="color:#15803d;font-size:0.8rem;">₹' + n.net + '</b>' : '<b style="color:var(--dark);">₹' + p.price + '</b>'} &nbsp;•&nbsp; ${subDur(p)}</div>
+                    ${n.pct ? '<div style="display:inline-flex;align-items:center;gap:5px;margin-top:6px;max-width:100%;background:#dcfce7;color:#166534;border-radius:8px;padding:3px 9px;font-size:0.68rem;font-weight:800;"><span>🏷️</span><span style="min-width:0;word-break:break-word;">' + subEsc(n.name) + ' · ' + n.pct + '% off</span></div>' : ''}
+                </div>
+                <span style="flex:0 0 auto;font-size:0.62rem;font-weight:800;padding:3px 9px;border-radius:20px;color:#fff;background:${on ? '#16a34a' : '#94a3b8'};">${on ? 'Active' : 'Disabled'}</span>
+            </div>
+            <div style="display:flex;gap:6px;margin-top:10px;">
+            <button style="border:none;background:${on ? '#fff7ed' : '#f0fdf4'};color:${on ? '#c2410c' : '#15803d'};flex:1;padding:7px 6px;border-radius:8px;font-size:0.7rem;font-weight:800;cursor:pointer;" onclick="saTogglePlan('${p.id}')">${on ? 'Disable' : 'Enable'}</button>
+            <button style="border:none;background:#eff6ff;color:#1e40af;flex:1;padding:7px 6px;border-radius:8px;font-size:0.7rem;font-weight:800;cursor:pointer;" onclick="saEditPlan('${p.id}')">Edit</button>
+            <button style="border:none;background:#fef2f2;color:#dc2626;flex:1;padding:7px 6px;border-radius:8px;font-size:0.7rem;font-weight:800;cursor:pointer;" onclick="saDeletePlan('${p.id}')">Delete</button>
+            </div>
         </div>`; }).join('') : '<div style="text-align:center;color:var(--grey);font-size:0.78rem;padding:12px;">No plans yet — create one below.</div>';
 }
 function saTogglePlan(id){
@@ -4151,7 +4170,8 @@ function saEditPlan(id){
     const p = id ? saGetPlans().find(x => x.id === id) : null;
     document.getElementById('sa-plan-name').value = p ? p.name : '';
     document.getElementById('sa-plan-price').value = p ? p.price : '';
-    document.getElementById('sa-plan-months').value = p ? p.months : '';
+    document.getElementById('sa-plan-months').value = p && !(p.days > 0) ? p.months : '';
+    document.getElementById('sa-plan-days').value = p && p.days > 0 ? p.days : '';
     document.getElementById('sa-plan-disc-name').value = p && p.discPct ? (p.discName || '') : '';
     document.getElementById('sa-plan-disc-pct').value = p && p.discPct ? p.discPct : '';
     document.getElementById('sa-plan-form-title').innerText = p ? '✏️ Edit Plan' : '➕ New Plan';
@@ -4160,15 +4180,17 @@ function saEditPlan(id){
 function saSavePlan(){
     const name = document.getElementById('sa-plan-name').value.trim();
     const price = parseFloat(document.getElementById('sa-plan-price').value);
-    const months = parseInt(document.getElementById('sa-plan-months').value, 10);
-    if (!name || !(price > 0) || !(months > 0)) { alert('❌ Plan name, price (greater than 0) and months (greater than 0) are required.'); return; }
+    let months = parseInt(document.getElementById('sa-plan-months').value, 10);
+    const days = parseInt(document.getElementById('sa-plan-days').value, 10) || 0;
+    if (days > 0) months = Math.max(1, Math.round(days / 30));
+    if (!name || !(price > 0) || !(months > 0)) { alert('❌ Plan name, price (greater than 0) and a duration (months, or days) are required.'); return; }
     const dn = document.getElementById('sa-plan-disc-name').value.trim(), dpRaw = document.getElementById('sa-plan-disc-pct').value.trim(), dp = dpRaw === '' ? 0 : parseFloat(dpRaw);
     if (dpRaw !== '' && !(dp >= 0 && dp < 100)) { alert('❌ Discount % must be between 0 and 99.'); return; }
     if (dp > 0 && !dn) { alert('❌ Please give the discount offer a name (e.g. Diwali Offer).'); return; }
     const disc = dp > 0 ? { discName: dn, discPct: dp } : { discName: '', discPct: 0 };
     const a = saGetPlans();
-    if (_saEditPlanId) { const p = a.find(x => x.id === _saEditPlanId); if (p) { p.name = name; p.price = price; p.months = months; p.discName = disc.discName; p.discPct = disc.discPct; } }
-    else a.push(Object.assign({ id: 'PLN' + Date.now(), name, price, months, active: true }, disc));
+    if (_saEditPlanId) { const p = a.find(x => x.id === _saEditPlanId); if (p) { p.name = name; p.price = price; p.months = months; p.days = days > 0 ? days : 0; p.discName = disc.discName; p.discPct = disc.discPct; } }
+    else a.push(Object.assign({ id: 'PLN' + Date.now(), name, price, months, days: days > 0 ? days : 0, active: true }, disc));
     saPutPlans(a); saEditPlan(null); saRenderPlans();
 }
 function saDeletePlan(id){
@@ -4186,6 +4208,7 @@ function saChargePlanUi(type){
     document.getElementById('sa-charge-plan').innerHTML = '<option value="">' + (a.length ? '— Select a plan —' : '— No active plans (enable one in Manage Subscription Plans) —') + '</option>' +
         a.map(p => { const n = subPlanNet(p); return `<option value="${p.id}">${p.name} — ₹${n.net} / ${p.months} month${p.months > 1 ? 's' : ''}${n.pct ? ' (' + n.name + ' ' + n.pct + '% off)' : ''}</option>`; }).join('');
     document.getElementById('sa-charge-plan-info').innerHTML = ''; _saAutoNote = '';
+    document.getElementById('sa-charge-disc-name').value = ''; document.getElementById('sa-charge-disc-pct').value = ''; document.getElementById('sa-charge-disc-calc').innerHTML = '';
 }
 let _saAutoNote = '';
 let _saPayMode = 'wallet';
@@ -4200,20 +4223,35 @@ function saChargePlanChanged(){
     const info = document.getElementById('sa-charge-plan-info'), note = document.getElementById('sa-charge-note');
     if (!p) { info.innerHTML = ''; if (note.value.trim() === _saAutoNote) note.value = ''; _saAutoNote = ''; return; }
     const _net = subPlanNet(p);
-    document.getElementById('sa-charge-amount').value = _net.net;
-    const auto = p.name + ' plan (' + p.months + ' month' + (p.months > 1 ? 's' : '') + ')';
+    document.getElementById('sa-charge-disc-name').value = _net.pct ? _net.name : '';
+    document.getElementById('sa-charge-disc-pct').value = _net.pct || '';
+    saChargeCalc();
+    const auto = p.name + ' plan (' + subDur(p) + ')';
     // Replace the auto-filled note when the plan changes (otherwise the old plan's text stayed behind), but never overwrite the Super Admin's own text.
     if (!note.value.trim() || note.value.trim() === _saAutoNote) note.value = auto;
     _saAutoNote = auto;
     const w = _saWalletAdminId ? saGetWallet(_saWalletAdminId) : null;
     info.style.color = '#0369a1';
-    info.innerHTML = (_net.pct ? '<div style="color:#15803d;margin-bottom:4px;">🏷️ ' + subEsc(_net.name) + ' — ' + _net.pct + '% off: ₹' + p.price + ' → ₹' + _net.net + '</div>' : '') + (subPlanNote(w && w.subscription, p, 'super') || ('When the Admin accepts, a ' + p.months + '-month subscription is activated.'));
+    info.innerHTML = (subPlanNote(w && w.subscription, p, 'super') || ('When the Admin accepts, a ' + p.months + '-month subscription is activated.'));
+}
+// Discount typed in the Request Renewal Charge popup (starts from the plan's own offer, optional, editable).
+function saChargeDisc(p){
+    const nm = (document.getElementById('sa-charge-disc-name').value || '').trim(), raw = parseFloat(document.getElementById('sa-charge-disc-pct').value);
+    const pct = raw > 0 && raw < 100 ? raw : 0;
+    return { pct: pct, name: pct ? (nm || 'Discount') : '', net: pct ? Math.round(p.price * (100 - pct)) / 100 : p.price, off: pct ? Math.round(p.price * pct) / 100 : 0 };
+}
+function saChargeCalc(){
+    const p = saGetPlans().find(x => x.id === (document.getElementById('sa-charge-plan') || {}).value), out = document.getElementById('sa-charge-disc-calc');
+    if (!p) { out.innerHTML = ''; return; }
+    const d = saChargeDisc(p);
+    document.getElementById('sa-charge-amount').value = d.net;
+    out.innerHTML = d.pct ? '₹' + p.price + ' − ' + d.pct + '% (' + subEsc(d.name) + ': −₹' + d.off + ') = <span style="font-size:0.82rem;">₹' + d.net + '</span>' : '<span style="color:var(--grey);font-weight:700;">No discount — list price ₹' + p.price + '</span>';
 }
 function saSelectedPlanSnapshot(){
     const el = document.getElementById('sa-charge-plan'); if (!el || !el.value) return null;
     const p = saGetPlans().find(x => x.id === el.value);
-    if (!p) return null; const n = subPlanNet(p);
-    return { id: p.id, name: p.name, price: n.net, listPrice: p.price, discName: n.pct ? n.name : '', discPct: n.pct, months: p.months };
+    if (!p) return null; const n = saChargeDisc(p);
+    return { id: p.id, name: p.name, price: n.net, listPrice: p.price, discName: n.pct ? n.name : '', discPct: n.pct, months: p.months, days: p.days || 0 };
 }
 // ===== SUBSCRIPTION CARD + INVOICE (shared logic) =====
 function subEsc(t){ return String(t == null ? '' : t).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
@@ -4238,7 +4276,7 @@ function subAutoText(sub, isAdmin){
         ? 'Your plan renews by itself. On the Next Renewal date ' + price + ' is deducted from your wallet and the plan continues — there is no request to accept. If your balance is low, the wallet may go negative.'
         : 'Set by the Admin. On the renewal date ' + price + ' is deducted from the Admin\'s wallet automatically, so no renewal request is needed. The balance may go negative if funds are low.';
     return isAdmin
-        ? 'On the Next Renewal date we send you a renewal request. Accept it to continue — the fee is deducted when you accept. If it is not accepted within 5 days after expiry, new registrations, student work and fees are blocked.'
+        ? 'Auto-Renewal is OFF, so you must accept each renewal request yourself. <b>Turn it ON</b> and the plan fee is deducted from your wallet automatically on the Next Renewal date — no request to accept, no risk of missing the date, and your dashboard is never restricted. If you leave it OFF and do not accept within 5 days after expiry, new registrations, student work and fees are blocked.'
         : 'Set by the Admin. On the renewal date the system sends the Admin a renewal request automatically. The Admin must accept it. If it is not accepted within 5 days after expiry, restrictions start on the Admin\'s dashboard.';
 }
 function subCardHtml(sub, isAdmin, wallet){
@@ -4270,13 +4308,13 @@ function subCardHtml(sub, isAdmin, wallet){
 function subDownloadSelected(btn){ subDownloadInvoice(parseInt(btn.parentNode.querySelector('select').value, 10)); }
 function subInvoiceHtml(wallet, libId, h, idx, cfg){
     cfg = cfg || {};
-    const ps = h.periodStart || h.date, pe = h.periodEnd || (function(){ const d = new Date(ps); d.setMonth(d.getMonth() + (h.months || 1)); d.setDate(d.getDate() - 1); return d.toISOString(); })();
+    const ps = h.periodStart || h.date, pe = h.periodEnd || (function(){ const d = new Date(ps); if (h.days > 0) d.setDate(d.getDate() + h.days); else d.setMonth(d.getMonth() + (h.months || 1)); d.setDate(d.getDate() - 1); return d.toISOString(); })();
     const no = subInvNo(h, idx), txn = subResolveTxn(wallet, h), isLast = idx === ((wallet.subscription && wallet.subscription.history) || []).length - 1;
     const row = (k, v) => '<tr><td style="color:#64748b;width:45%">' + k + '</td><td><b>' + v + '</b></td></tr>';
     return '<!DOCTYPE html><html><head><meta charset="utf-8"><title>' + subEsc(no) + '</title><style>body{font-family:Arial,sans-serif;color:#0f172a;max-width:720px;margin:30px auto;padding:0 20px}h1{margin:0;font-size:1.5rem;color:#0369a1}.top{display:flex;justify-content:space-between;border-bottom:3px solid #0369a1;padding-bottom:14px}.m{font-size:.85rem;line-height:1.7}table{width:100%;border-collapse:collapse;margin-top:18px}th,td{padding:10px;text-align:left;border-bottom:1px solid #e2e8f0;font-size:.88rem}th{background:#f1f5f9}.box td{padding:7px 10px;font-size:.85rem}.t{text-align:right;font-size:1.1rem;font-weight:800;margin-top:16px}.paid{display:inline-block;border:2px solid #16a34a;color:#16a34a;font-weight:800;padding:3px 12px;border-radius:6px;margin-top:8px}.f{margin-top:36px;font-size:.72rem;color:#64748b;text-align:center}@media print{body{margin:0}}</style></head><body>' +
         '<div class="top"><div><h1>Samarthak</h1><div class="m">Subscription Invoice</div></div><div class="m" style="text-align:right"><b style="font-size:1.05rem">' + subEsc(no) + '</b><br>Date: ' + subFmt(h.date) + '<br><span class="paid">PAID</span></div></div>' +
         '<div class="m" style="margin-top:16px"><b>Billed To</b><br>' + (cfg.libName ? '<b>' + subEsc(cfg.libName) + '</b><br>' : '') + (cfg.ownerName ? 'Owner: ' + subEsc(cfg.ownerName) + '<br>' : '') + (cfg.address ? subEsc(cfg.address) + (cfg.pin ? ' – ' + subEsc(cfg.pin) : '') + '<br>' : '') + (cfg.mobile ? 'Mobile: ' + subEsc(cfg.mobile) + '<br>' : '') + 'Admin ID: ' + subEsc(libId) + (wallet.id ? '<br>Wallet UID: ' + subEsc(wallet.id) : '') + '</div>' +
-        '<table><tr><th>Description</th><th>Period</th><th style="text-align:right">Amount</th></tr><tr><td>' + subEsc(h.planName) + ' Plan (' + h.months + ' month' + (h.months > 1 ? 's' : '') + ')</td><td>' + subFmt(ps) + ' – ' + subFmt(pe) + '</td><td style="text-align:right">₹' + h.amount + '</td></tr></table>' +
+        '<table><tr><th>Description</th><th>Period</th><th style="text-align:right">Amount</th></tr><tr><td>' + subEsc(h.planName) + ' Plan (' + subDur(h) + ')</td><td>' + subFmt(ps) + ' – ' + subFmt(pe) + '</td><td style="text-align:right">₹' + h.amount + '</td></tr></table>' +
         (h.discPct ? '<div class="m" style="text-align:right;margin-top:8px">List price: ₹' + h.listPrice + ' &nbsp;·&nbsp; Discount (' + subEsc(h.discName) + ' ' + h.discPct + '%): −₹' + (Number(h.listPrice) - Number(h.amount)).toFixed(2) + '</div>' : '') + '<div class="t">Total Paid: ₹' + h.amount + '</div>' +
         '<table class="box" style="margin-top:20px">' + row('Invoice Number', subEsc(no)) + row('Transaction ID', subEsc(txn)) + row('Payment Mode', h.payMode === 'Cash' ? 'Cash (received by Super Admin)' : 'Samarthak Wallet') + (h.discPct ? row('Discount Offer', subEsc(h.discName) + ' — ' + h.discPct + '% off') : '') + (h.acceptedBy ? row('Accepted By', subEsc(h.acceptedBy)) : '') + (h.forfeitedDays > 0 ? row('Previous plan days forfeited', h.forfeitedDays + ' day(s) (plan changed)') : '') +
             row('Auto Renewal', h.auto ? 'Yes — this payment was auto-renewed' : 'No — renewed manually (Admin accepted)') +
@@ -4293,13 +4331,14 @@ function subPlanNet(p){
     const price = p ? Number(p.price) || 0 : 0, pct = p && Number(p.discPct) > 0 && Number(p.discPct) < 100 ? Number(p.discPct) : 0;
     return { price: price, pct: pct, name: pct ? (p.discName || 'Discount') : '', net: pct ? Math.round(price * (100 - pct)) / 100 : price };
 }
+function subDur(o){ if (!o) return ''; const d = Number(o.days) || 0; if (d > 0) return d + ' day' + (d > 1 ? 's' : ''); const m = Number(o.months) || 0; return m + ' month' + (m > 1 ? 's' : ''); }
 const SUB_CARRY_DAYS = 2;
 function subLatestPlan(id){ try { const a = JSON.parse(localStorage.getItem('Samarthak_SA_SubPlans')); return (a && a.find(p => p.id === id)) || null; } catch (e) { return null; } }
 // What happens to the current term if `plan` is accepted now: fresh / extend (same plan) / carry (switch with <=2 days left) / change (switch, remaining days lost).
 function subTermMode(sub, plan){
     const d = sub && sub.expiresAt ? subDaysLeft(sub.expiresAt) : -1;
     if (d < 0) return { kind: 'fresh', days: 0 };
-    if (sub.planId === plan.id && sub.months === plan.months) return { kind: 'extend', days: d };
+    if (sub.planId === plan.id && sub.months === plan.months && (sub.days || 0) === (plan.days || 0)) return { kind: 'extend', days: d };
     return d <= SUB_CARRY_DAYS ? { kind: 'carry', days: d } : { kind: 'change', days: d };
 }
 function subPlanNote(sub, plan, role){
@@ -4343,17 +4382,17 @@ function subApplyTerm(w, plan, amount, txnId, auto, isAutoCharge){
     const now = new Date(), old = w.subscription, mode = subTermMode(old, plan), stack = mode.kind === 'extend' || mode.kind === 'carry';
     const start = new Date(); start.setHours(0, 0, 0, 0);
     if (stack) { start.setTime(new Date(old.expiresAt).getTime()); start.setDate(start.getDate() + 1); start.setHours(0, 0, 0, 0); }
-    const end = new Date(start); end.setMonth(end.getMonth() + plan.months); end.setDate(end.getDate() - 1); end.setHours(23, 59, 59, 999);
+    const end = new Date(start); if (plan.days > 0) end.setDate(end.getDate() + plan.days); else end.setMonth(end.getMonth() + plan.months); end.setDate(end.getDate() - 1); end.setHours(23, 59, 59, 999);
     const hist = (old && old.history) || [];
-    hist.push({ planName: plan.name, months: plan.months, amount: amount, listPrice: plan.listPrice || plan.price, discName: plan.discName || '', discPct: plan.discPct || 0, date: now.toISOString(), txnId: txnId, periodStart: start.toISOString(), periodEnd: end.toISOString(), auto: !!isAutoCharge, forfeitedDays: mode.kind === 'change' ? mode.days : 0 });
-    w.subscription = { planId: plan.id, planName: plan.name, months: plan.months, price: plan.price || amount, autoRenew: !!auto, startedAt: stack ? (old.startedAt || start.toISOString()) : start.toISOString(), expiresAt: end.toISOString(), history: hist };
+    hist.push({ planName: plan.name, months: plan.months, days: plan.days || 0, amount: amount, listPrice: plan.listPrice || plan.price, discName: plan.discName || '', discPct: plan.discPct || 0, date: now.toISOString(), txnId: txnId, periodStart: start.toISOString(), periodEnd: end.toISOString(), auto: !!isAutoCharge, forfeitedDays: mode.kind === 'change' ? mode.days : 0 });
+    w.subscription = { planId: plan.id, planName: plan.name, months: plan.months, days: plan.days || 0, price: plan.price || amount, autoRenew: !!auto, startedAt: stack ? (old.startedAt || start.toISOString()) : start.toISOString(), expiresAt: end.toISOString(), history: hist };
 }
 // Fully automatic renewal on the Next Renewal date (Auto-Renew ON). Uses the Super Admin's CURRENT plan definition (so plan edits apply),
 // may take the wallet negative (reason recorded), and needs an Active wallet.
 function subAutoRenewCore(w, genId){
     const s = w.subscription;
     if (!s || !s.autoRenew || !s.expiresAt || w.status !== 'active' || subDaysLeft(s.expiresAt) > 0) return false;
-    const lp = subLatestPlan(s.planId), plan = { id: s.planId, name: lp ? lp.name : s.planName, months: lp ? lp.months : s.months, price: subPlanNet(lp || { price: s.price }).net, listPrice: lp ? lp.price : s.price, discName: (lp && lp.discPct > 0) ? lp.discName : '', discPct: (lp && lp.discPct > 0) ? lp.discPct : 0 };
+    const lp = subLatestPlan(s.planId), plan = { id: s.planId, name: lp ? lp.name : s.planName, months: lp ? lp.months : s.months, days: lp ? lp.days : s.days, price: subPlanNet(lp || { price: s.price }).net, listPrice: lp ? lp.price : s.price, discName: (lp && lp.discPct > 0) ? lp.discName : '', discPct: (lp && lp.discPct > 0) ? lp.discPct : 0 };
     if (!(plan.price > 0)) return false;
     const nowIso = new Date().toISOString(), txnId = genId(), before = w.balance || 0;
     w.balance = before - plan.price; const neg = w.balance < 0;
@@ -4371,7 +4410,7 @@ function subAutoRequestCore(w){
     if (!s || !s.expiresAt || s.autoRenew || w.status !== 'active' || !(w.setup && w.setup.done) || subDaysLeft(s.expiresAt) > 0) return false;
     w.chargeRequests = w.chargeRequests || [];
     if (s.autoRequestedFor === s.expiresAt || w.chargeRequests.some(r => r.status === 'Pending' && r.plan)) return false;
-    const lp = subLatestPlan(s.planId), plan = { id: s.planId, name: lp ? lp.name : s.planName, months: lp ? lp.months : s.months, price: subPlanNet(lp || { price: s.price }).net, listPrice: lp ? lp.price : s.price, discName: (lp && lp.discPct > 0) ? lp.discName : '', discPct: (lp && lp.discPct > 0) ? lp.discPct : 0 };
+    const lp = subLatestPlan(s.planId), plan = { id: s.planId, name: lp ? lp.name : s.planName, months: lp ? lp.months : s.months, days: lp ? lp.days : s.days, price: subPlanNet(lp || { price: s.price }).net, listPrice: lp ? lp.price : s.price, discName: (lp && lp.discPct > 0) ? lp.discName : '', discPct: (lp && lp.discPct > 0) ? lp.discPct : 0 };
     if (!(plan.price > 0)) return false;
     w.chargeRequests.push({ id: 'WCR' + Date.now() + Math.floor(Math.random() * 1000), type: 'renewal', amount: plan.price, note: 'Sent automatically by the system on the Next Renewal date', status: 'Pending', requestedAt: new Date().toISOString(), decidedAt: null, decisionReason: null, plan: plan, autoSent: true });
     s.autoRequestedFor = s.expiresAt;
@@ -4438,7 +4477,7 @@ function saAcceptByAuthority(adminId){
     if (!s.authorityGranted) { alert('❌ The Admin has not granted authority yet. The option unlocks after the Admin tries to log in and grants authority on the lock screen.'); return; }
     if (w.status !== 'active') { alert('❌ The wallet must be Active to deduct the renewal amount (current status: ' + w.status + ').'); return; }
     const pend = (w.chargeRequests || []).find(r => r.status === 'Pending' && r.plan), lp = subLatestPlan(s.planId);
-    const plan = pend ? pend.plan : { id: s.planId, name: lp ? lp.name : s.planName, months: lp ? lp.months : s.months, price: subPlanNet(lp || { price: s.price }).net, listPrice: lp ? lp.price : s.price, discName: (lp && lp.discPct > 0) ? lp.discName : '', discPct: (lp && lp.discPct > 0) ? lp.discPct : 0 };
+    const plan = pend ? pend.plan : { id: s.planId, name: lp ? lp.name : s.planName, months: lp ? lp.months : s.months, days: lp ? lp.days : s.days, price: subPlanNet(lp || { price: s.price }).net, listPrice: lp ? lp.price : s.price, discName: (lp && lp.discPct > 0) ? lp.discName : '', discPct: (lp && lp.discPct > 0) ? lp.discPct : 0 };
     const amount = pend ? pend.amount : plan.price;
     if (!confirm('Accept the “' + plan.name + '” renewal of ₹' + amount + ' on behalf of ' + adminId + ' (authority granted by the Admin)?\n\nThe amount is deducted from the wallet (it may go negative) and the dashboard is unlocked immediately.')) return;
     const txnId = saGenerateWalletTxnId(), nowIso = new Date().toISOString(), before = w.balance || 0, by = 'Super Admin (authority granted by Admin)';
@@ -4527,6 +4566,11 @@ function saConfirmChargeModal(){
     const amount = parseFloat(document.getElementById('sa-charge-amount').value);
     if (!amount || amount <= 0) { document.getElementById('err-sa-charge-amount').style.display = 'block'; return; }
     const note = document.getElementById('sa-charge-note').value.trim();
+    if (_saChargeType === 'renewal') {
+        const dn = (document.getElementById('sa-charge-disc-name').value || '').trim(), dpr = document.getElementById('sa-charge-disc-pct').value.trim();
+        if (dpr !== '' && !(parseFloat(dpr) >= 0 && parseFloat(dpr) < 100)) { alert('❌ Discount % must be between 0 and 99.'); return; }
+        if (parseFloat(dpr) > 0 && !dn) { alert('❌ Please enter the discount offer name.'); return; }
+    }
     if (_saChargeType === 'penalty' && !note) { document.getElementById('err-sa-charge-note').style.display = 'block'; return; }
     try {
         if (_saChargeType === 'renewal' && _saPayMode === 'cash') {
@@ -4573,7 +4617,7 @@ function saRenderWalletChargeRequests(wallet){
             : '<span style="color:#dc2626;font-weight:800;">❌ Rejected by Admin</span>';
         const origin = rq.auto ? '🔁 Auto-renewal (Auto-Renew ON)' : rq.autoSent ? '🤖 Sent automatically on the renewal date' : rq.acceptedBy ? '✅ Accepted by ' + subEsc(rq.acceptedBy) : '👤 Sent by Super Admin';
         return '<div style="background:#fff;border:1px solid #bae6fd;border-radius:10px;padding:10px;margin-bottom:8px;font-size:0.74rem;">' +
-            '<div style="display:flex;justify-content:space-between;gap:8px;"><strong>🔄 ' + (rq.plan ? subEsc(rq.plan.name) + ' plan (' + rq.plan.months + ' month' + (rq.plan.months > 1 ? 's' : '') + ')' : 'Renewal Charge') + ' — ₹' + rq.amount + '</strong><span>' + saFmtWalletDate(rq.requestedAt) + '</span></div>' +
+            '<div style="display:flex;justify-content:space-between;gap:8px;"><strong>🔄 ' + (rq.plan ? subEsc(rq.plan.name) + ' plan (' + subDur(rq.plan) + ')' : 'Renewal Charge') + ' — ₹' + rq.amount + '</strong><span>' + saFmtWalletDate(rq.requestedAt) + '</span></div>' +
             '<div style="color:var(--grey);margin-top:2px;">' + origin + '</div>' + (rq.plan && rq.plan.discPct ? '<div style="color:#15803d;font-weight:800;margin-top:2px;">🏷️ ' + subEsc(rq.plan.discName) + ' — ' + rq.plan.discPct + '% off (₹' + rq.plan.listPrice + ' → ₹' + rq.amount + ')</div>' : '') + (rq.note ? '<div style="color:var(--grey);margin-top:2px;">' + subEsc(rq.note) + '</div>' : '') +
             '<div style="margin-top:4px;">' + st + (rq.decidedAt ? ' <span style="color:var(--grey);">• ' + saFmtWalletDate(rq.decidedAt) + '</span>' : '') + '</div>' +
             (rq.status === 'Rejected' && rq.decisionReason ? '<div style="color:#991b1b;margin-top:4px;">Reason: ' + subEsc(rq.decisionReason) + '</div>' : '') + '</div>';
@@ -4596,7 +4640,7 @@ function renderSaSubModal(){
     hint.innerHTML = !setupDone ? '⛔ Not applicable: the Admin has not completed First-Time Wallet Setup &amp; AI Video eKYC yet.'
         : wallet.status === 'deactivated' ? '⏸ Wallet is Deactivated — renewal requests are blocked until the Admin reactivates it.'
         : wallet.status !== 'active' ? '⛔ Renewal requests cannot be sent while the wallet is ' + wallet.status + '.'
-        : 'When the Admin accepts a request, the amount is deducted from the wallet and the subscription is activated or extended. If the Admin has Auto-Renewal turned OFF, the system sends a renewal request automatically on the renewal date, so you never need to send one manually. If Auto-Renewal is ON, the fee is deducted automatically and no request is needed.';
+        : '<div style="line-height:1.6;"><b>Auto-Renewal OFF:</b> When Auto-Renewal is OFF, the Admin must manually accept the renewal request for the subscription to be renewed. Once the Admin accepts the request, the renewal fee is deducted from the Admin\'s wallet, and the subscription is activated or extended.<br><br><b>Auto-Renewal ON:</b> When Auto-Renewal is ON, the renewal fee is automatically deducted from the Admin\'s wallet on the renewal date, and the subscription is renewed without requiring any manual approval or request.<br><br>The system automatically sends up to 3 renewal requests on your behalf when the Admin\'s subscription expires.</div>'
 }
 function saRenderWalletLockHistory(wallet){
     const el = document.getElementById('sa-wallet-lock-history-panel');
