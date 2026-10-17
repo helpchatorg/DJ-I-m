@@ -4343,7 +4343,12 @@ function subCardHtml(sub, isAdmin, wallet){
             '<div class="sub-inv-no" style="font-size:0.95rem;font-weight:800;color:#0369a1;font-family:monospace;margin-top:2px;">' + subInvNo(hist[last], last) + '</div>' +
             '<div class="sub-inv-txn" style="font-size:0.66rem;color:#64748b;font-family:monospace;margin-top:2px;word-break:break-all;">Txn ID: ' + subEsc(subResolveTxn(wallet, hist[last])) + '</div>' +
             (hist.length > 1 ? '<label style="display:block;font-size:0.66rem;font-weight:800;color:#64748b;margin:10px 0 4px;">Select an older invoice</label><select onchange="' + upd + '" style="width:100%;padding:9px;border-radius:10px;border:1.5px solid #e2e8f0;font-size:0.72rem;background:#fff;">' + opts + '</select>' : '<select style="display:none;"><option value="' + last + '" selected></option></select>') +
-            '<button style="width:100%;border:none;border-radius:10px;font-weight:800;cursor:pointer;background:linear-gradient(135deg,#0ea5e9,#0369a1);color:#fff;padding:11px;font-size:0.78rem;margin-top:10px;" onclick="subDownloadSelected(this)">⬇️ Download Invoice</button></div>' : '') + (isAdmin ? subPolicyHtml() : '');
+            '<button style="width:100%;border:none;border-radius:10px;font-weight:800;cursor:pointer;background:linear-gradient(135deg,#0ea5e9,#0369a1);color:#fff;padding:11px;font-size:0.78rem;margin-top:10px;" onclick="subDownloadSelected(this)">⬇️ Download Invoice</button></div>' : '') + subTxnListHtml(sub, wallet) + (isAdmin ? subPolicyHtml() : '');
+}
+function subTxnListHtml(sub, wallet){
+    const hist = (sub && sub.history) || []; if (!hist.length) return '';
+    const rows = hist.map((h, i) => ({ h, i })).reverse().map(x => '<div style="display:flex;justify-content:space-between;gap:8px;padding:7px 0;border-top:1px solid #e0f2fe;font-size:0.66rem;"><div><b>' + subInvNo(x.h, x.i) + '</b> • ' + subEsc(x.h.planName) + '<br><span style="color:#64748b;">' + subFmt(x.h.date) + (x.h.payMode === 'Cash' ? ' • Cash' : ' • Wallet') + '</span></div><div style="text-align:right;"><b>\u20b9' + x.h.amount + '</b><br><span style="font-family:monospace;color:#0369a1;word-break:break-all;">' + subEsc(subResolveTxn(wallet, x.h)) + '</span></div></div>').join('');
+    return '<div style="margin-top:10px;background:#fff;border:1px solid #bae6fd;border-radius:14px;padding:11px 13px;"><div style="font-size:0.62rem;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Subscription payments \u2014 Wallet Transaction ID</div>' + rows + '</div>';
 }
 function subDownloadSelected(btn){ subDownloadInvoice(parseInt(btn.parentNode.querySelector('select').value, 10)); }
 function subInvoiceHtml(wallet, libId, h, idx, cfg){
