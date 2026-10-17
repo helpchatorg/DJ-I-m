@@ -136,9 +136,9 @@
     .sa-mini-btn-unblock{background:#dcfce7;color:#166534;}
     .sa-mini-btn-discontinue{background:#fee2e2;color:#991b1b;}
     .sa-mini-btn-access{background:#ede9fe;color:#5b21b6;}
-    .sa-status-row td{padding:0 12px 12px !important;border-top:none !important;background:transparent;}
-    .sa-stbar{display:flex;flex-wrap:wrap;gap:6px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:8px 12px;}
-    .sa-sti{display:inline-flex;align-items:center;gap:6px;font-size:0.68rem;color:#475569;white-space:nowrap;}
+    .sa-stbar{display:flex;flex-direction:column;gap:5px;margin-top:10px;min-width:210px;max-width:250px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:9px 12px;font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;letter-spacing:0;}
+    .sa-sti{display:flex;align-items:center;gap:7px;font-size:0.68rem;color:#475569;line-height:1.3;}
+    .sa-sti b{min-width:78px;}
     .sa-sti .d{width:8px;height:8px;border-radius:50%;flex-shrink:0;background:#94a3b8;}
     .sa-sti.ok .d{background:#16a34a;}.sa-sti.warn .d{background:#f59e0b;}.sa-sti.bad .d{background:#dc2626;}.sa-sti.info .d{background:#6366f1;}
     .sa-sti b{color:#1e293b;font-weight:800;}
@@ -1883,7 +1883,7 @@ function saFinalizeWalletClosureIfDue(w){
         w.lockHistory.push({ action: 'reopen_expired', label: 'Reopen Approval Expired - Video eKYC not completed within 1 month', date: _nowIso, by: 'System' });
         return true;
     }
-    if (w && w.status === 'closing' && w.closeFinalizeAt && new Date() >= new Date(w.closeFinalizeAt)) {
+    if (w && w.status === 'closing' && w.closeFinalizeAt && new Date() >= new Date(w.closeFinalizeAt) && (w.balance || 0) >= 0) {
         w.balance = 0;
         w.archivedTransactions = (w.archivedTransactions || []).concat(w.transactions || []);
         w.transactions = [];
@@ -2330,12 +2330,12 @@ function saRenderAdminsPanel(){
         const exportBtn = `<div><button class="sa-mini-btn" style="background:#eef2ff;color:#4338ca;border:1px solid #c7d2fe;" onclick="expOpenModal('${a.id}')">💾 Export Data</button>${lastExportCaption}</div>`;
 
         return `<tr>
-            <td class="mono">${a.id}</td>
+            <td class="mono"><div>${a.id}</div>${a.discontinued ? '' : _statusRow}</td>
             <td><span class="type-tag">${a.type}</span>${a.isDemo ? ' <span class="badge" style="background:#fffbeb;color:#92400e;border:1px solid #fde68a;">Demo</span>' : ''}</td>
             <td>${pwdBadge}</td>
             <td>${statusBadge}${ticketBlocked ? `<div style="margin-top:4px;"><span class="badge" style="background:#fef3c7;color:#92400e;">${tmStatusLabel(adminTicketRestriction).text}</span></div>` : ''}</td>
             <td><div class="sa-admin-actions">${accessBtn}${walletBtn}${subBtn}${settingBtn}${exportBtn}${a.discontinued ? '<span style="font-size:0.72rem;color:var(--grey);">No other actions available</span>' : ''}</div></td>
-        </tr>${a.discontinued ? '' : _statusRow}`;
+        </tr>`;
     }).join('') || `<tr><td colspan="5" style="text-align:center;color:var(--grey);padding:20px;">${searchTerm ? 'No admin found matching "'+searchTerm+'".' : 'No admin accounts found.'}</td></tr>`;
     renderSaStudentAccessTable();
     saRenderTicketRestrictions();
@@ -4275,7 +4275,7 @@ function saStatusBarHtml(a, adminWallet, ticketBlocked, lib){
     else it('Access', 'No request', 'mute');
     const ws = (adminWallet || {}).status || 'active';
     const wl = { active: ['Active', 'ok'], deactivated: ['Deactivated', 'bad'], frozen: ['Frozen', 'bad'], closing: ['Closing', 'warn'], closed: ['Closed', 'bad'] }[ws] || [ws, 'mute'];
-    it('Wallet', wl[0] + ((adminWallet.balance || 0) < 0 ? ' · negative balance' : ''), (adminWallet.balance || 0) < 0 && wl[1] === 'ok' ? 'bad' : wl[1]);
+    it('Wallet', ((adminWallet.balance || 0) < 0 && wl[1] === 'ok') ? 'Negative balance' : wl[0], (adminWallet.balance || 0) < 0 && wl[1] === 'ok' ? 'bad' : wl[1]);
     const pc = ((adminWallet || {}).chargeRequests || []).filter(r => r.status === 'Pending').length;
     if (pc) it('Charge requests', pc + ' pending', 'info');
     if (!sub || !sub.expiresAt) it('Plan', 'No plan', 'mute');
@@ -4289,7 +4289,7 @@ function saStatusBarHtml(a, adminWallet, ticketBlocked, lib){
     if (ticketBlocked) it('Tickets', 'Creation blocked', 'warn');
     if (a.isDemo) it('Type', 'Demo account', 'info');
     it('Backup', lib && lib.lastExportAt ? 'Done ' + new Date(lib.lastExportAt).toLocaleDateString() : 'Never done', lib && lib.lastExportAt ? 'ok' : 'warn');
-    return '<tr class="sa-status-row"><td colspan="5"><div class="sa-stbar">' + items.join('') + '</div></td></tr>';
+    return '<div class="sa-stbar">' + items.join('') + '</div>';
 }
 function subStatus(sub){
     if (!sub || !sub.expiresAt) return { label: 'No active subscription', color: '#64748b', days: 0 };
@@ -4438,8 +4438,6 @@ function subAutoRenewCore(w, genId){
     w.balance = before - plan.price; const neg = w.balance < 0;
     w.transactions = w.transactions || [];
     w.transactions.push({ id: txnId, type: 'debit', chargeType: 'renewal', amount: plan.price, balanceAfter: w.balance, date: nowIso, note: 'Auto-renewal — ' + plan.name + ' plan' + (neg ? ' (balance went negative: wallet had ₹' + before + ' but the charge was ₹' + plan.price + ')' : ''), by: 'Auto-Renew', isSuperAdminCharge: true, negativeBalance: neg });
-    w.chargeRequests = w.chargeRequests || [];
-    w.chargeRequests.push({ id: 'WCR' + Date.now() + Math.floor(Math.random() * 1000), type: 'renewal', amount: plan.price, note: 'Auto-created by system (Auto-Renew ON)', status: 'Approved', requestedAt: nowIso, decidedAt: nowIso, decisionReason: null, plan: plan, auto: true });
     subApplyTerm(w, plan, plan.price, txnId, true, true);
     if (neg) w.subscription.autoNegative = { kind: 'auto', date: nowIso, amount: plan.price, balanceBefore: before, balanceAfter: w.balance, planName: plan.name };
     return true;
