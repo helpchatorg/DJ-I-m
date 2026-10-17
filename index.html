@@ -130,17 +130,19 @@
     .badge-blocked{background:#fef3c7;color:#92400e;}
     .badge-discontinued{background:#fee2e2;color:#991b1b;}
     .badge-pending{background:#f1f5f9;color:#475569;}
-    .sa-admin-actions{display:flex;flex-direction:column;gap:6px;align-items:stretch;width:100%;min-width:215px;max-width:270px;}
+    .sa-admin-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start;}
     .sa-mini-btn{padding:6px 12px;font-size:0.7rem;font-weight:800;border-radius:8px;}
     .sa-mini-btn-block{background:#fef3c7;color:#92400e;}
     .sa-mini-btn-unblock{background:#dcfce7;color:#166534;}
     .sa-mini-btn-discontinue{background:#fee2e2;color:#991b1b;}
     .sa-mini-btn-access{background:#ede9fe;color:#5b21b6;}
-    .sa-chip{display:inline-flex;align-items:center;gap:4px;font-size:0.62rem;font-weight:800;border-radius:20px;padding:2px 8px;white-space:nowrap;flex-shrink:0;line-height:1.4;}
-    .sa-st-ok{background:#dcfce7;color:#166534;}.sa-st-warn{background:#ffedd5;color:#9a3412;}.sa-st-bad{background:#fee2e2;color:#991b1b;}.sa-st-info{background:#e0e7ff;color:#3730a3;}.sa-st-mute{background:#f1f5f9;color:#475569;}
-    .sa-admin-actions .sa-mini-btn{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;text-align:left;box-sizing:border-box;margin:0;}
-    .sa-admin-actions .sa-mini-btn .sa-lbl{white-space:nowrap;}
-    .sa-admin-actions .sa-setting-wrap{display:block;width:100%;}
+    .sa-status-row td{padding:0 12px 12px !important;border-top:none !important;background:transparent;}
+    .sa-stbar{display:flex;flex-wrap:wrap;gap:6px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:8px 12px;}
+    .sa-sti{display:inline-flex;align-items:center;gap:6px;font-size:0.68rem;color:#475569;white-space:nowrap;}
+    .sa-sti .d{width:8px;height:8px;border-radius:50%;flex-shrink:0;background:#94a3b8;}
+    .sa-sti.ok .d{background:#16a34a;}.sa-sti.warn .d{background:#f59e0b;}.sa-sti.bad .d{background:#dc2626;}.sa-sti.info .d{background:#6366f1;}
+    .sa-sti b{color:#1e293b;font-weight:800;}
+    .sa-sti.bad span.v{color:#b91c1c;font-weight:800;}.sa-sti.warn span.v{color:#b45309;font-weight:800;}.sa-sti.ok span.v{color:#166534;font-weight:800;}
     .sa-mini-btn-setting{background:#f1f5f9;color:#334155;}
     .sa-mini-btn:disabled{opacity:0.5;cursor:not-allowed;}
 
@@ -2281,18 +2283,18 @@ function saRenderAdminsPanel(){
             }
         }
         const adminWallet = saGetWallet(a.id);
-        const _pl = saAdminStatusPills(a, adminWallet, ticketBlocked, saReadLibrary(a.id) || {});
+        const _statusRow = saStatusBarHtml(a, adminWallet, ticketBlocked, saReadLibrary(a.id) || {});
         const accessBtn = a.discontinued ? ''
-            : `<button class="sa-mini-btn sa-mini-btn-access" onclick="openSaAccessAdminModal('${a.id}')"><span class="sa-lbl">🔓 Access Account</span>${_pl.access}</button>`;
+            : `<button class="sa-mini-btn sa-mini-btn-access" onclick="openSaAccessAdminModal('${a.id}')">🔓 Access Account</button>`;
 
         const walletStatusIcon = '';
         const walletReopenPending = adminWallet.status === 'closed' && adminWallet.reopenRequest && adminWallet.reopenRequest.status === 'pending';
         const walletBtn = a.discontinued ? ''
-            : `<button class="sa-mini-btn sa-mini-btn-access" style="background:#fffbeb;border-color:#f59e0b;color:#92400e;position:relative;" onclick="openSaWalletModal('${a.id}')"><span class="sa-lbl">💰 Wallet: ₹${adminWallet.balance || 0}</span>${_pl.wallet}${walletReopenPending ? '<span class="dot" style="margin-left:6px;"></span>' : ''}</button>`;
+            : `<button class="sa-mini-btn sa-mini-btn-access" style="background:#fffbeb;border-color:#f59e0b;color:#92400e;position:relative;" onclick="openSaWalletModal('${a.id}')">💰 Wallet: ₹${adminWallet.balance || 0}${walletStatusIcon}${walletReopenPending ? '<span class="dot" style="margin-left:6px;"></span>' : ''}</button>`;
 
         const _subState = (adminWallet || {}).subscription;
         const subBtn = a.discontinued ? ''
-            : `<button class="sa-mini-btn sa-mini-btn-access" style="background:#f0f9ff;border-color:#0ea5e9;color:#0369a1;position:relative;" onclick="openSaSubModal('${a.id}')"><span class="sa-lbl">💳 Manage Subscription</span>${_pl.sub}${(_subState && subRestrictLevel(_subState) >= 3 && _subState.authorityGranted) ? '<span class="dot" style="margin-left:6px;"></span>' : ''}</button>`;
+            : `<button class="sa-mini-btn sa-mini-btn-access" style="background:#f0f9ff;border-color:#0ea5e9;color:#0369a1;position:relative;" onclick="openSaSubModal('${a.id}')">💳 Manage Subscription${(_subState && subRestrictLevel(_subState) >= 3 && _subState.authorityGranted) ? '<span class="dot" style="margin-left:6px;"></span>' : ''}</button>`;
 
         const passRowHtml = a.passwordSet
             ? `<div class="v mono">${a.password}</div>`
@@ -2308,7 +2310,7 @@ function saRenderAdminsPanel(){
             : '';
         const settingBtn = a.discontinued ? ''
             : `<div class="sa-setting-wrap">
-                <button class="sa-mini-btn sa-mini-btn-setting" onclick="saToggleAdminSetting(event, '${a.id}')"><span class="sa-lbl">⚙️ Setting</span>${_pl.setting}</button>
+                <button class="sa-mini-btn sa-mini-btn-setting" onclick="saToggleAdminSetting(event, '${a.id}')">⚙️ Setting</button>
                 <div class="sa-setting-dropdown" id="sa-setting-dd-${a.id}">
                     <div class="sa-setting-pass-row">
                         <div class="l">Default Password (set by Super Admin)</div>
@@ -2325,7 +2327,7 @@ function saRenderAdminsPanel(){
         // discontinuing only blocks login; the library data itself is kept untouched.
         const adminLibForExport = saReadLibrary(a.id) || {};
         const lastExportCaption = `<div style="font-size:0.66rem;color:var(--grey);margin-top:3px;line-height:1.5;">🕓 Last Export &amp; Backup: ${adminLibForExport.lastExportAt ? new Date(adminLibForExport.lastExportAt).toLocaleString() : 'never'}<br>♻️ Last Restored: ${adminLibForExport.lastRestoreAt ? new Date(adminLibForExport.lastRestoreAt).toLocaleString() : 'never'}</div>`;
-        const exportBtn = `<div><button class="sa-mini-btn" style="background:#eef2ff;color:#4338ca;border:1px solid #c7d2fe;" onclick="expOpenModal('${a.id}')"><span class="sa-lbl">💾 Export Data</span>${_pl.exp}</button>${lastExportCaption}</div>`;
+        const exportBtn = `<div><button class="sa-mini-btn" style="background:#eef2ff;color:#4338ca;border:1px solid #c7d2fe;" onclick="expOpenModal('${a.id}')">💾 Export Data</button>${lastExportCaption}</div>`;
 
         return `<tr>
             <td class="mono">${a.id}</td>
@@ -2333,7 +2335,7 @@ function saRenderAdminsPanel(){
             <td>${pwdBadge}</td>
             <td>${statusBadge}${ticketBlocked ? `<div style="margin-top:4px;"><span class="badge" style="background:#fef3c7;color:#92400e;">${tmStatusLabel(adminTicketRestriction).text}</span></div>` : ''}</td>
             <td><div class="sa-admin-actions">${accessBtn}${walletBtn}${subBtn}${settingBtn}${exportBtn}${a.discontinued ? '<span style="font-size:0.72rem;color:var(--grey);">No other actions available</span>' : ''}</div></td>
-        </tr>`;
+        </tr>${a.discontinued ? '' : _statusRow}`;
     }).join('') || `<tr><td colspan="5" style="text-align:center;color:var(--grey);padding:20px;">${searchTerm ? 'No admin found matching "'+searchTerm+'".' : 'No admin accounts found.'}</td></tr>`;
     renderSaStudentAccessTable();
     saRenderTicketRestrictions();
@@ -4263,48 +4265,31 @@ function saSelectedPlanSnapshot(){
 function subEsc(t){ return String(t == null ? '' : t).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 function subFmt(iso){ if (!iso) return '—'; const d = new Date(iso), p = n => String(n).padStart(2, '0'); return p(d.getDate()) + '/' + p(d.getMonth() + 1) + '/' + d.getFullYear(); }
 function subDaysLeft(iso){ const e = new Date(iso), n = new Date(); return Math.round((new Date(e.getFullYear(), e.getMonth(), e.getDate()) - new Date(n.getFullYear(), n.getMonth(), n.getDate())) / 864e5); }
-function saPills(list, suffix){
-    const rank = { bad: 0, warn: 1, info: 2, ok: 3, mute: 4 };
-    const L = list.filter(p => p && p[1] !== 'Normal' && p[1] !== 'No request').sort((a, b) => rank[a[2]] - rank[b[2]]);
-    if (!L.length) return '';
-    const tip = L.map(p => p[0] + ' ' + p[1]).join(' • ');
-    return '<span class="sa-chip sa-st-' + L[0][2] + '" title="' + tip + '">' + L[0][0] + ' ' + L[0][1] + (suffix || '') + '</span>';
-}
-function saAdminStatusPills(a, adminWallet, ticketBlocked, lib){
-    const now = Date.now(), sub = (adminWallet || {}).subscription, out = {};
+function saStatusBarHtml(a, adminWallet, ticketBlocked, lib){
+    const now = Date.now(), sub = (adminWallet || {}).subscription, items = [];
+    const it = (label, value, cls) => items.push('<span class="sa-sti ' + cls + '"><i class="d"></i><b>' + label + '</b><span class="v">' + value + '</span></span>');
     const rq = latestRequestForAdmin(a.id);
-    const acc = [];
-    if (rq && rq.status === 'pending' && now < rq.expiresAt) acc.push(['⏳', 'Request pending', 'warn']);
-    else if (rq && rq.status === 'accepted' && rq.cooldownUntil && now < rq.cooldownUntil) acc.push(['🟢', 'Access active', 'ok']);
-    else if (rq && rq.status === 'rejected' && now - rq.requestedAt < 86400000) acc.push(['❌', 'Rejected', 'bad']);
-    else acc.push(['⚪', 'No request', 'mute']);
-    out.access = saPills(acc);
-    const w = [], ws = (adminWallet || {}).status || 'active';
-    if (ws === 'deactivated') w.push(['🟡', 'Deactivated', 'bad']); else if (ws === 'frozen') w.push(['🧊', 'Frozen', 'bad']); else if (ws === 'closing') w.push(['⏳', 'Closing', 'warn']); else if (ws === 'closed') w.push(['⛔', 'Closed', 'bad']); else w.push(['✅', 'Active', 'ok']);
-    if ((adminWallet.balance || 0) < 0) w.push(['🔻', 'Negative balance', 'bad']);
+    if (rq && rq.status === 'pending' && now < rq.expiresAt) it('Access', 'Request pending', 'warn');
+    else if (rq && rq.status === 'accepted' && rq.cooldownUntil && now < rq.cooldownUntil) it('Access', 'Active now', 'ok');
+    else if (rq && rq.status === 'rejected' && now - rq.requestedAt < 86400000) it('Access', 'Rejected by admin', 'bad');
+    else it('Access', 'No request', 'mute');
+    const ws = (adminWallet || {}).status || 'active';
+    const wl = { active: ['Active', 'ok'], deactivated: ['Deactivated', 'bad'], frozen: ['Frozen', 'bad'], closing: ['Closing', 'warn'], closed: ['Closed', 'bad'] }[ws] || [ws, 'mute'];
+    it('Wallet', wl[0] + ((adminWallet.balance || 0) < 0 ? ' · negative balance' : ''), (adminWallet.balance || 0) < 0 && wl[1] === 'ok' ? 'bad' : wl[1]);
     const pc = ((adminWallet || {}).chargeRequests || []).filter(r => r.status === 'Pending').length;
-    if (pc) w.push(['📨', pc + ' pending request' + (pc > 1 ? 's' : ''), 'info']);
-    out.wallet = saPills(w);
-    const b = [];
-    if (!sub || !sub.expiresAt) b.push(['⚪', 'No plan', 'mute']);
+    if (pc) it('Charge requests', pc + ' pending', 'info');
+    if (!sub || !sub.expiresAt) it('Plan', 'No plan', 'mute');
     else {
         const d = subDaysLeft(sub.expiresAt);
-        if (d < 0) b.push(['🔴', 'Expired ' + Math.abs(d) + 'd ago', 'bad']); else if (d === 0) b.push(['🟠', 'Expires today', 'warn']); else if (d <= 7) b.push(['🟠', 'Expires in ' + d + 'd', 'warn']); else b.push(['🟢', 'Active', 'ok']);
-        b.push(sub.autoRenew ? ['🔁', 'Auto-renew ON', 'ok'] : ['⚪', 'Auto OFF', 'mute']);
-        const lv = subRestrictLevel(sub); if (lv >= 3) b.push(['🔒', 'Dashboard locked', 'bad']); else if (lv > 0) b.push(['⚠️', 'Restricted', 'warn']);
+        if (d < 0) it('Plan', 'Expired ' + Math.abs(d) + ' day(s) ago', 'bad'); else if (d === 0) it('Plan', 'Expires today', 'warn'); else if (d <= 7) it('Plan', 'Expires in ' + d + ' day(s)', 'warn'); else it('Plan', 'Active', 'ok');
+        it('Auto-renew', sub.autoRenew ? 'ON' : 'OFF', sub.autoRenew ? 'ok' : 'mute');
+        const lv = subRestrictLevel(sub); if (lv >= 3) it('Dashboard', 'Locked', 'bad'); else if (lv > 0) it('Dashboard', 'Restricted', 'warn');
     }
-    out.sub = saPills(b, (sub && sub.autoRenew) ? ' · 🔁' : '');
-    const st = [];
-    if (a.blocked) st.push(['🚫', 'Blocked', 'bad']);
-    if (ticketBlocked) st.push(['🎫', 'Ticket blocked', 'warn']);
-    if (a.isDemo) st.push(['⏳', 'Demo', 'info']);
-    if (!st.length) st.push(['✅', 'Normal', 'ok']);
-    out.setting = saPills(st);
-    const e = [];
-    e.push(lib && lib.lastExportAt ? ['✅', 'Backed up', 'ok'] : ['⚠️', 'Never backed up', 'warn']);
-    if (lib && lib.lastRestoreAt) e.push(['♻️', 'Restored', 'info']);
-    out.exp = saPills(e);
-    return out;
+    if (a.blocked) it('Account', 'Blocked', 'bad');
+    if (ticketBlocked) it('Tickets', 'Creation blocked', 'warn');
+    if (a.isDemo) it('Type', 'Demo account', 'info');
+    it('Backup', lib && lib.lastExportAt ? 'Done ' + new Date(lib.lastExportAt).toLocaleDateString() : 'Never done', lib && lib.lastExportAt ? 'ok' : 'warn');
+    return '<tr class="sa-status-row"><td colspan="5"><div class="sa-stbar">' + items.join('') + '</div></td></tr>';
 }
 function subStatus(sub){
     if (!sub || !sub.expiresAt) return { label: 'No active subscription', color: '#64748b', days: 0 };
