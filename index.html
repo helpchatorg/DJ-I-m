@@ -136,6 +136,9 @@
     .sa-mini-btn-unblock{background:#dcfce7;color:#166534;}
     .sa-mini-btn-discontinue{background:#fee2e2;color:#991b1b;}
     .sa-mini-btn-access{background:#ede9fe;color:#5b21b6;}
+    .sa-sts{display:block;margin-top:4px;line-height:1.2;text-align:left;font-weight:400;}
+    .sa-st{display:inline-block;font-size:0.62rem;font-weight:800;border-radius:8px;padding:2px 7px;margin:2px 3px 0 0;white-space:nowrap;}
+    .sa-st-ok{background:#dcfce7;color:#166534;}.sa-st-warn{background:#ffedd5;color:#9a3412;}.sa-st-bad{background:#fee2e2;color:#991b1b;}.sa-st-info{background:#e0e7ff;color:#3730a3;}.sa-st-mute{background:#f1f5f9;color:#475569;}
     .sa-mini-btn-setting{background:#f1f5f9;color:#334155;}
     .sa-mini-btn:disabled{opacity:0.5;cursor:not-allowed;}
 
@@ -2275,18 +2278,19 @@ function saRenderAdminsPanel(){
                 ticketBlockBtn = `<button class="sa-mini-btn sa-mini-btn-unblock" onclick="saUnblockAdminTicketCreation('${a.id}')">🎫 Unblock New Ticket Creation</button>`;
             }
         }
-        const accessBtn = a.discontinued ? ''
-            : `<button class="sa-mini-btn sa-mini-btn-access" onclick="openSaAccessAdminModal('${a.id}')">🔓 Access Account</button>`;
-
         const adminWallet = saGetWallet(a.id);
-        const walletStatusIcon = { active:'', deactivated:' ⏸', closing:' ⏳', closed:' ⛔' }[adminWallet.status] || '';
+        const _pl = saAdminStatusPills(a, adminWallet, ticketBlocked, saReadLibrary(a.id) || {});
+        const accessBtn = a.discontinued ? ''
+            : `<button class="sa-mini-btn sa-mini-btn-access" onclick="openSaAccessAdminModal('${a.id}')">🔓 Access Account${_pl.access}</button>`;
+
+        const walletStatusIcon = '';
         const walletReopenPending = adminWallet.status === 'closed' && adminWallet.reopenRequest && adminWallet.reopenRequest.status === 'pending';
         const walletBtn = a.discontinued ? ''
-            : `<button class="sa-mini-btn sa-mini-btn-access" style="background:#fffbeb;border-color:#f59e0b;color:#92400e;position:relative;" onclick="openSaWalletModal('${a.id}')">💰 Wallet: ₹${adminWallet.balance || 0}${walletStatusIcon}${walletReopenPending ? '<span class="dot" style="margin-left:6px;"></span>' : ''}</button>`;
+            : `<button class="sa-mini-btn sa-mini-btn-access" style="background:#fffbeb;border-color:#f59e0b;color:#92400e;position:relative;" onclick="openSaWalletModal('${a.id}')">💰 Wallet: ₹${adminWallet.balance || 0}${walletStatusIcon}${_pl.wallet}${walletReopenPending ? '<span class="dot" style="margin-left:6px;"></span>' : ''}</button>`;
 
         const _subState = (adminWallet || {}).subscription;
         const subBtn = a.discontinued ? ''
-            : `<button class="sa-mini-btn sa-mini-btn-access" style="background:#f0f9ff;border-color:#0ea5e9;color:#0369a1;position:relative;" onclick="openSaSubModal('${a.id}')">💳 Manage Subscription${(_subState && subRestrictLevel(_subState) >= 3 && _subState.authorityGranted) ? '<span class="dot" style="margin-left:6px;"></span>' : ''}</button>`;
+            : `<button class="sa-mini-btn sa-mini-btn-access" style="background:#f0f9ff;border-color:#0ea5e9;color:#0369a1;position:relative;" onclick="openSaSubModal('${a.id}')">💳 Manage Subscription${_pl.sub}${(_subState && subRestrictLevel(_subState) >= 3 && _subState.authorityGranted) ? '<span class="dot" style="margin-left:6px;"></span>' : ''}</button>`;
 
         const passRowHtml = a.passwordSet
             ? `<div class="v mono">${a.password}</div>`
@@ -2302,7 +2306,7 @@ function saRenderAdminsPanel(){
             : '';
         const settingBtn = a.discontinued ? ''
             : `<div class="sa-setting-wrap">
-                <button class="sa-mini-btn sa-mini-btn-setting" onclick="saToggleAdminSetting(event, '${a.id}')">⚙️ Setting</button>
+                <button class="sa-mini-btn sa-mini-btn-setting" onclick="saToggleAdminSetting(event, '${a.id}')">⚙️ Setting${_pl.setting}</button>
                 <div class="sa-setting-dropdown" id="sa-setting-dd-${a.id}">
                     <div class="sa-setting-pass-row">
                         <div class="l">Default Password (set by Super Admin)</div>
@@ -2319,7 +2323,7 @@ function saRenderAdminsPanel(){
         // discontinuing only blocks login; the library data itself is kept untouched.
         const adminLibForExport = saReadLibrary(a.id) || {};
         const lastExportCaption = `<div style="font-size:0.66rem;color:var(--grey);margin-top:3px;line-height:1.5;">🕓 Last Export &amp; Backup: ${adminLibForExport.lastExportAt ? new Date(adminLibForExport.lastExportAt).toLocaleString() : 'never'}<br>♻️ Last Restored: ${adminLibForExport.lastRestoreAt ? new Date(adminLibForExport.lastRestoreAt).toLocaleString() : 'never'}</div>`;
-        const exportBtn = `<div><button class="sa-mini-btn" style="background:#eef2ff;color:#4338ca;border:1px solid #c7d2fe;" onclick="expOpenModal('${a.id}')">💾 Export Data</button>${lastExportCaption}</div>`;
+        const exportBtn = `<div><button class="sa-mini-btn" style="background:#eef2ff;color:#4338ca;border:1px solid #c7d2fe;" onclick="expOpenModal('${a.id}')">💾 Export Data${_pl.exp}</button>${lastExportCaption}</div>`;
 
         return `<tr>
             <td class="mono">${a.id}</td>
@@ -4257,6 +4261,46 @@ function saSelectedPlanSnapshot(){
 function subEsc(t){ return String(t == null ? '' : t).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 function subFmt(iso){ if (!iso) return '—'; const d = new Date(iso), p = n => String(n).padStart(2, '0'); return p(d.getDate()) + '/' + p(d.getMonth() + 1) + '/' + d.getFullYear(); }
 function subDaysLeft(iso){ const e = new Date(iso), n = new Date(); return Math.round((new Date(e.getFullYear(), e.getMonth(), e.getDate()) - new Date(n.getFullYear(), n.getMonth(), n.getDate())) / 864e5); }
+function saPills(list){
+    const h = list.filter(Boolean).map(p => '<span class="sa-st sa-st-' + p[2] + '" title="' + p[1] + '">' + p[0] + ' ' + p[1] + '</span>').join('');
+    return h ? '<span class="sa-sts">' + h + '</span>' : '';
+}
+function saAdminStatusPills(a, adminWallet, ticketBlocked, lib){
+    const now = Date.now(), sub = (adminWallet || {}).subscription, out = {};
+    const rq = latestRequestForAdmin(a.id);
+    const acc = [];
+    if (rq && rq.status === 'pending' && now < rq.expiresAt) acc.push(['⏳', 'Request pending', 'warn']);
+    else if (rq && rq.status === 'accepted' && rq.cooldownUntil && now < rq.cooldownUntil) acc.push(['🟢', 'Access active', 'ok']);
+    else if (rq && rq.status === 'rejected' && now - rq.requestedAt < 86400000) acc.push(['❌', 'Rejected', 'bad']);
+    else acc.push(['⚪', 'No request', 'mute']);
+    out.access = saPills(acc);
+    const w = [], ws = (adminWallet || {}).status || 'active';
+    if (ws === 'deactivated') w.push(['🟡', 'Deactivated', 'warn']); else if (ws === 'frozen') w.push(['🧊', 'Frozen', 'bad']); else if (ws === 'closing') w.push(['⏳', 'Closing', 'warn']); else if (ws === 'closed') w.push(['⛔', 'Closed', 'bad']); else w.push(['✅', 'Active', 'ok']);
+    if ((adminWallet.balance || 0) < 0) w.push(['🔻', 'Negative balance', 'bad']);
+    const pc = ((adminWallet || {}).chargeRequests || []).filter(r => r.status === 'Pending').length;
+    if (pc) w.push(['📨', pc + ' pending request' + (pc > 1 ? 's' : ''), 'info']);
+    out.wallet = saPills(w);
+    const b = [];
+    if (!sub || !sub.expiresAt) b.push(['⚪', 'No plan', 'mute']);
+    else {
+        const d = subDaysLeft(sub.expiresAt);
+        if (d < 0) b.push(['🔴', 'Expired ' + Math.abs(d) + 'd ago', 'bad']); else if (d === 0) b.push(['🟠', 'Expires today', 'warn']); else if (d <= 7) b.push(['🟠', 'Expires in ' + d + 'd', 'warn']); else b.push(['🟢', 'Active', 'ok']);
+        b.push(sub.autoRenew ? ['🔁', 'Auto-renew ON', 'ok'] : ['⚪', 'Auto OFF', 'mute']);
+        const lv = subRestrictLevel(sub); if (lv >= 3) b.push(['🔒', 'Dashboard locked', 'bad']); else if (lv > 0) b.push(['⚠️', 'Restricted', 'warn']);
+    }
+    out.sub = saPills(b);
+    const st = [];
+    if (a.blocked) st.push(['🚫', 'Blocked', 'bad']);
+    if (ticketBlocked) st.push(['🎫', 'Ticket blocked', 'warn']);
+    if (a.isDemo) st.push(['⏳', 'Demo', 'info']);
+    if (!st.length) st.push(['✅', 'Normal', 'ok']);
+    out.setting = saPills(st);
+    const e = [];
+    e.push(lib && lib.lastExportAt ? ['✅', 'Backed up', 'ok'] : ['⚠️', 'Never backed up', 'warn']);
+    if (lib && lib.lastRestoreAt) e.push(['♻️', 'Restored', 'info']);
+    out.exp = saPills(e);
+    return out;
+}
 function subStatus(sub){
     if (!sub || !sub.expiresAt) return { label: 'No active subscription', color: '#64748b', days: 0 };
     const d = subDaysLeft(sub.expiresAt);
@@ -4271,6 +4315,12 @@ function subResolveTxn(wallet, h){
     return t ? t.id : (h.txnId || '—');
 }
 function subAutoText(sub, isAdmin){
+    const t = subAutoText0(sub, isAdmin);
+    if (sub.autoRenew) return t;
+    const n = (sub.autoSendCount || 0);
+    return t + ' <b>The system sends the renewal request automatically at most 3 times</b> (on the renewal date, then once a day) — ' + (n ? '<b>sent ' + n + ' of 3</b>' : 'none sent yet') + (n >= 3 ? ', no more will be sent.' : '.');
+}
+function subAutoText0(sub, isAdmin){
     const price = sub.price ? '₹' + sub.price : 'the plan fee';
     if (sub.autoRenew) return isAdmin
         ? 'Your plan renews by itself. On the Next Renewal date ' + price + ' is deducted from your wallet and the plan continues — there is no request to accept. If your balance is low, the wallet may go negative.'
@@ -4409,11 +4459,16 @@ function subAutoRequestCore(w){
     const s = w.subscription;
     if (!s || !s.expiresAt || s.autoRenew || w.status !== 'active' || !(w.setup && w.setup.done) || subDaysLeft(s.expiresAt) > 0) return false;
     w.chargeRequests = w.chargeRequests || [];
-    if (s.autoRequestedFor === s.expiresAt || w.chargeRequests.some(r => r.status === 'Pending' && r.plan)) return false;
+    // Max 3 automatic sends per renewal cycle, at most one per calendar day (renewal date, +1 day, +2 days).
+    if (s.autoRequestedFor !== s.expiresAt) { s.autoRequestedFor = s.expiresAt; s.autoSendCount = 0; s.autoSendLastDay = null; }
+    const todayKey = new Date().toISOString().slice(0, 10);
+    if ((s.autoSendCount || 0) >= 3 || s.autoSendLastDay === todayKey) return false;
+    if (w.chargeRequests.some(r => r.status === 'Pending' && r.plan && !r.autoSent)) return false;
     const lp = subLatestPlan(s.planId), plan = { id: s.planId, name: lp ? lp.name : s.planName, months: lp ? lp.months : s.months, days: lp ? lp.days : s.days, price: subPlanNet(lp || { price: s.price }).net, listPrice: lp ? lp.price : s.price, discName: (lp && lp.discPct > 0) ? lp.discName : '', discPct: (lp && lp.discPct > 0) ? lp.discPct : 0 };
     if (!(plan.price > 0)) return false;
-    w.chargeRequests.push({ id: 'WCR' + Date.now() + Math.floor(Math.random() * 1000), type: 'renewal', amount: plan.price, note: 'Sent automatically by the system on the Next Renewal date', status: 'Pending', requestedAt: new Date().toISOString(), decidedAt: null, decisionReason: null, plan: plan, autoSent: true });
-    s.autoRequestedFor = s.expiresAt;
+    w.chargeRequests.push({ id: 'WCR' + Date.now() + Math.floor(Math.random() * 1000), type: 'renewal', amount: plan.price, note: 'Sent automatically by the system on the Next Renewal date (request ' + ((s.autoSendCount || 0) + 1) + ' of 3)', autoSeq: (s.autoSendCount || 0) + 1, status: 'Pending', requestedAt: new Date().toISOString(), decidedAt: null, decisionReason: null, plan: plan, autoSent: true });
+    s.autoSendCount = (s.autoSendCount || 0) + 1; s.autoSendLastDay = todayKey;
+    if (typeof subSupersedePending === 'function') subSupersedePending(w);
     return true;
 }
 // Only the newest pending renewal request stays pending; older unaccepted ones are rejected automatically.
@@ -4461,13 +4516,13 @@ function saRenderDueRenewals(){
             const when = r.n < 0 ? Math.abs(r.n) + ' day(s) ago expired' : r.n === 0 ? 'Expires today' : r.n + ' day(s) left';
             const lockLbl = lv ? ' • <span style="color:#b91c1c;">🔒 ' + (lv >= 3 ? 'Dashboard locked' : lv === 2 ? 'Config locked' : 'Operations restricted') + '</span>' : '';
             const accept = lv >= 3 ? (r.sub.authorityGranted
-                ? '<button style="border:none;background:#15803d;color:#fff;padding:8px 10px;border-radius:10px;font-size:0.64rem;font-weight:800;cursor:pointer;line-height:1.3;" onclick="saAcceptByAuthority(\'' + idq + '\')">✅ Accept by Super Admin (Authority granted by Admin)</button>'
-                : '<div style="font-size:0.62rem;color:#64748b;max-width:150px;line-height:1.3;">Waiting for the Admin to grant authority</div>') : '';
-            return '<div style="display:flex;align-items:center;gap:10px;background:#fff;border:1.5px solid ' + col + ';border-left-width:5px;border-radius:12px;padding:10px 12px;margin-bottom:8px;">' +
-                '<div style="flex:1;min-width:0;"><div style="font-size:0.82rem;font-weight:800;word-break:break-all;">' + subEsc(r.id) + ' — ' + subEsc(r.sub.planName) + '</div>' +
+                ? '<button style="border:none;background:#15803d;color:#fff;padding:10px;border-radius:10px;font-size:0.72rem;font-weight:800;cursor:pointer;line-height:1.3;width:100%;margin:0;" onclick="saAcceptByAuthority(\'' + idq + '\')">✅ Accept by Super Admin (Authority granted by Admin)</button>'
+                : '<div style="font-size:0.68rem;color:#64748b;line-height:1.4;text-align:center;">Waiting for the Admin to grant authority</div>') : '';
+            return '<div style="display:flex;flex-direction:column;align-items:stretch;gap:10px;background:#fff;border:1.5px solid ' + col + ';border-left-width:5px;border-radius:12px;padding:12px;margin-bottom:8px;">' +
+                '<div style="min-width:0;"><div style="font-size:0.84rem;font-weight:800;overflow-wrap:anywhere;line-height:1.35;">' + subEsc(r.id) + ' — ' + subEsc(r.sub.planName) + '</div>' +
                 '<div style="font-size:0.68rem;color:#64748b;margin-top:2px;">Next Renewal ' + subFmt(r.sub.expiresAt) + '</div>' +
                 '<div style="font-size:0.7rem;font-weight:800;color:' + col + ';margin-top:2px;">⏰ ' + when + (r.sub.autoRenew ? ' • <span style="color:#16a34a;">🔁 Auto-renew ON</span>' : ' • <span style="color:#64748b;">Auto OFF</span>') + lockLbl + '</div></div>' +
-                '<div style="display:flex;flex-direction:column;gap:6px;align-items:stretch;"><button style="border:none;background:' + col + ';color:#fff;padding:9px 12px;border-radius:10px;font-size:0.7rem;font-weight:800;cursor:pointer;white-space:nowrap;" onclick="openSaSubModal(\'' + idq + '\')">💳 Manage Subscription</button>' + accept + '</div></div>';
+                '<div style="display:flex;flex-direction:column;gap:6px;align-items:stretch;"><button style="border:none;background:' + col + ';color:#fff;padding:11px 12px;border-radius:10px;font-size:0.78rem;font-weight:800;cursor:pointer;width:100%;margin:0;" onclick="openSaSubModal(\'' + idq + '\')">💳 Manage Subscription</button>' + accept + '</div></div>';
         }).join('');
 }
 // Locked dashboard (Auto-Renew OFF, 10+ days past expiry): the Admin cannot log in, so the Super Admin accepts the renewal on their behalf.
@@ -4615,7 +4670,7 @@ function saRenderWalletChargeRequests(wallet){
             : rq.status === 'Approved' && rq.payMode === 'Cash' ? '<span style="color:#d97706;font-weight:800;">💵 Paid in cash — plan activated</span>'
             : rq.status === 'Approved' ? '<span style="color:#16a34a;font-weight:800;">✅ Approved &amp; Deducted</span>'
             : '<span style="color:#dc2626;font-weight:800;">❌ Rejected by Admin</span>';
-        const origin = rq.auto ? '🔁 Auto-renewal (Auto-Renew ON)' : rq.autoSent ? '🤖 Sent automatically on the renewal date' : rq.acceptedBy ? '✅ Accepted by ' + subEsc(rq.acceptedBy) : '👤 Sent by Super Admin';
+        const origin = rq.auto ? '🔁 Auto-renewal (Auto-Renew ON)' : rq.autoSent ? '🤖 Sent automatically on the renewal date (' + (rq.autoSeq || 1) + ' of 3)' : rq.acceptedBy ? '✅ Accepted by ' + subEsc(rq.acceptedBy) : '👤 Sent by Super Admin';
         return '<div style="background:#fff;border:1px solid #bae6fd;border-radius:10px;padding:10px;margin-bottom:8px;font-size:0.74rem;">' +
             '<div style="display:flex;justify-content:space-between;gap:8px;"><strong>🔄 ' + (rq.plan ? subEsc(rq.plan.name) + ' plan (' + subDur(rq.plan) + ')' : 'Renewal Charge') + ' — ₹' + rq.amount + '</strong><span>' + saFmtWalletDate(rq.requestedAt) + '</span></div>' +
             '<div style="color:var(--grey);margin-top:2px;">' + origin + '</div>' + (rq.plan && rq.plan.discPct ? '<div style="color:#15803d;font-weight:800;margin-top:2px;">🏷️ ' + subEsc(rq.plan.discName) + ' — ' + rq.plan.discPct + '% off (₹' + rq.plan.listPrice + ' → ₹' + rq.amount + ')</div>' : '') + (rq.note ? '<div style="color:var(--grey);margin-top:2px;">' + subEsc(rq.note) + '</div>' : '') +
