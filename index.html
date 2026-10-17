@@ -2283,7 +2283,7 @@ function saRenderAdminsPanel(){
             }
         }
         const adminWallet = saGetWallet(a.id);
-        const _statusRow = saStatusBarHtml(a, adminWallet, ticketBlocked, saReadLibrary(a.id) || {});
+        const _statusRow = saStatusBarHtml(a, adminWallet, ticketBlocked, saReadLibrary(a.id) || {}); _saStbarLast[a.id] = _statusRow;
         const accessBtn = a.discontinued ? ''
             : `<button class="sa-mini-btn sa-mini-btn-access" onclick="openSaAccessAdminModal('${a.id}')">🔓 Access Account</button>`;
 
@@ -4276,8 +4276,15 @@ function saStatusBarHtml(a, adminWallet, ticketBlocked, lib){
     const ws = (adminWallet || {}).status || 'active';
     const wl = { active: ['Active', 'ok'], deactivated: ['Deactivated', 'bad'], frozen: ['Frozen', 'bad'], closing: ['Closing', 'warn'], closed: ['Closed', 'bad'] }[ws] || [ws, 'mute'];
     it('Wallet', ((adminWallet.balance || 0) < 0 && wl[1] === 'ok') ? 'Negative balance' : wl[0], (adminWallet.balance || 0) < 0 && wl[1] === 'ok' ? 'bad' : wl[1]);
+    const aw = adminWallet || {};
+    it('Balance', '\u20b9' + (aw.balance || 0), (aw.balance || 0) < 0 ? 'bad' : (aw.balance || 0) < 500 ? 'warn' : 'ok');
+    it('Wallet setup', aw.setup && aw.setup.done ? 'Completed' : 'Pending', aw.setup && aw.setup.done ? 'ok' : 'warn');
+    if (aw.ekycRequest && aw.ekycRequest.status === 'pending') it('eKYC', 'Re-verification pending', 'warn');
+    if (aw.reopenRequest && aw.reopenRequest.status === 'pending') it('Reopen request', 'Waiting for you', 'info');
+    if (aw.closeFinalizeAt && ws === 'closing') it('Closure', 'Closes ' + new Date(aw.closeFinalizeAt).toLocaleDateString(), 'warn');
     const pc = ((adminWallet || {}).chargeRequests || []).filter(r => r.status === 'Pending').length;
     if (pc) it('Charge requests', pc + ' pending', 'info');
+    if (a.discontinued) it('Library', 'Discontinued', 'bad');
     if (!sub || !sub.expiresAt) it('Plan', 'No plan', 'mute');
     else {
         const d = subDaysLeft(sub.expiresAt);
@@ -4289,8 +4296,30 @@ function saStatusBarHtml(a, adminWallet, ticketBlocked, lib){
     if (ticketBlocked) it('Tickets', 'Creation blocked', 'warn');
     if (a.isDemo) it('Type', 'Demo account', 'info');
     it('Backup', lib && lib.lastExportAt ? 'Done ' + new Date(lib.lastExportAt).toLocaleDateString() : 'Never done', lib && lib.lastExportAt ? 'ok' : 'warn');
-    return '<div class="sa-stbar">' + items.join('') + '</div>';
+    return '<div class="sa-stbar" data-aid="' + a.id + '">' + items.join('') + '</div>';
 }
+// Live refresh: status bars update by themselves (no page reload) after any action or change from another tab.
+let _saStbarSig = '', _saStbarLast = {};
+function saRefreshStatusBars(){
+    try {
+        if (document.hidden) return;
+        const bars = document.querySelectorAll('.sa-stbar[data-aid]'); if (!bars.length) return;
+        const all = saGetAllAdmins(); let sig = '';
+        bars.forEach(el => {
+            const a = all.find(x => x.id === el.getAttribute('data-aid')); if (!a) return;
+            const tr = tmRefreshRestriction(tmGetAdminRestrictionSA(a.id));
+            const blocked = tr.status === 'permanent_block' || tr.status === 'temp_block' || tr.status === 'restoration_pending';
+            const html = saStatusBarHtml(a, saGetWallet(a.id), blocked, saReadLibrary(a.id) || {});
+            sig += html;
+            if (_saStbarLast[a.id] !== html) { _saStbarLast[a.id] = html; el.outerHTML = html; }
+        });
+        if (_saStbarSig && sig !== _saStbarSig) { try { saRenderDueRenewals(); } catch (e) {} }
+        _saStbarSig = sig;
+    } catch (e) {}
+}
+setInterval(saRefreshStatusBars, 2500);
+window.addEventListener('storage', saRefreshStatusBars);
+document.addEventListener('visibilitychange', saRefreshStatusBars);
 function subStatus(sub){
     if (!sub || !sub.expiresAt) return { label: 'No active subscription', color: '#64748b', days: 0 };
     const d = subDaysLeft(sub.expiresAt);
@@ -4303,6 +4332,18 @@ function subResolveTxn(wallet, h){
     let t = all.find(x => x.id === h.txnId);
     if (!t) { const hd = new Date(h.date).getTime(); t = all.filter(x => x.type === 'debit' && x.chargeType === 'renewal' && x.amount == h.amount).sort((a, b) => Math.abs(new Date(a.date) - hd) - Math.abs(new Date(b.date) - hd))[0]; }
     return t ? t.id : (h.txnId || '—');
+}
+function subReqTxn(wallet, rq){
+    if (!rq) return '';
+    if (rq.txnId) return rq.txnId;
+    if (rq.status !== 'Approved') return '';
+    const t0 = new Date(rq.decidedAt || rq.requestedAt).getTime();
+    const all = ((wallet && wallet.archivedTransactions) || []).concat((wallet && wallet.transactions) || []);
+    const near = (arr, d) => arr.map(x => ({ x, d: Math.abs(new Date(d(x)).getTime() - t0) })).filter(o => o.d < 600000).sort((a, b) => a.d - b.d)[0];
+    const c = near(all.filter(x => x.type === 'debit' && x.chargeType === 'renewal' && x.amount == rq.amount), x => x.date);
+    if (c) return c.x.id;
+    const h = near((((wallet && wallet.subscription) || {}).history || []).filter(x => x.amount == rq.amount && x.txnId), x => x.date);
+    return h ? h.x.txnId : '';
 }
 function subAutoText(sub, isAdmin){
     const t = subAutoText0(sub, isAdmin);
@@ -4343,12 +4384,7 @@ function subCardHtml(sub, isAdmin, wallet){
             '<div class="sub-inv-no" style="font-size:0.95rem;font-weight:800;color:#0369a1;font-family:monospace;margin-top:2px;">' + subInvNo(hist[last], last) + '</div>' +
             '<div class="sub-inv-txn" style="font-size:0.66rem;color:#64748b;font-family:monospace;margin-top:2px;word-break:break-all;">Txn ID: ' + subEsc(subResolveTxn(wallet, hist[last])) + '</div>' +
             (hist.length > 1 ? '<label style="display:block;font-size:0.66rem;font-weight:800;color:#64748b;margin:10px 0 4px;">Select an older invoice</label><select onchange="' + upd + '" style="width:100%;padding:9px;border-radius:10px;border:1.5px solid #e2e8f0;font-size:0.72rem;background:#fff;">' + opts + '</select>' : '<select style="display:none;"><option value="' + last + '" selected></option></select>') +
-            '<button style="width:100%;border:none;border-radius:10px;font-weight:800;cursor:pointer;background:linear-gradient(135deg,#0ea5e9,#0369a1);color:#fff;padding:11px;font-size:0.78rem;margin-top:10px;" onclick="subDownloadSelected(this)">⬇️ Download Invoice</button></div>' : '') + subTxnListHtml(sub, wallet) + (isAdmin ? subPolicyHtml() : '');
-}
-function subTxnListHtml(sub, wallet){
-    const hist = (sub && sub.history) || []; if (!hist.length) return '';
-    const rows = hist.map((h, i) => ({ h, i })).reverse().map(x => '<div style="display:flex;justify-content:space-between;gap:8px;padding:7px 0;border-top:1px solid #e0f2fe;font-size:0.66rem;"><div><b>' + subInvNo(x.h, x.i) + '</b> • ' + subEsc(x.h.planName) + '<br><span style="color:#64748b;">' + subFmt(x.h.date) + (x.h.payMode === 'Cash' ? ' • Cash' : ' • Wallet') + '</span></div><div style="text-align:right;"><b>\u20b9' + x.h.amount + '</b><br><span style="font-family:monospace;color:#0369a1;word-break:break-all;">' + subEsc(subResolveTxn(wallet, x.h)) + '</span></div></div>').join('');
-    return '<div style="margin-top:10px;background:#fff;border:1px solid #bae6fd;border-radius:14px;padding:11px 13px;"><div style="font-size:0.62rem;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Subscription payments \u2014 Wallet Transaction ID</div>' + rows + '</div>';
+            '<button style="width:100%;border:none;border-radius:10px;font-weight:800;cursor:pointer;background:linear-gradient(135deg,#0ea5e9,#0369a1);color:#fff;padding:11px;font-size:0.78rem;margin-top:10px;" onclick="subDownloadSelected(this)">⬇️ Download Invoice</button></div>' : '') + (isAdmin ? subPolicyHtml() : '');
 }
 function subDownloadSelected(btn){ subDownloadInvoice(parseInt(btn.parentNode.querySelector('select').value, 10)); }
 function subInvoiceHtml(wallet, libId, h, idx, cfg){
@@ -4667,6 +4703,7 @@ function saRenderWalletChargeRequests(wallet){
         return '<div style="background:#fff;border:1px solid #bae6fd;border-radius:10px;padding:10px;margin-bottom:8px;font-size:0.74rem;">' +
             '<div style="display:flex;justify-content:space-between;gap:8px;"><strong>🔄 ' + (rq.plan ? subEsc(rq.plan.name) + ' plan (' + subDur(rq.plan) + ')' : 'Renewal Charge') + ' — ₹' + rq.amount + '</strong><span>' + saFmtWalletDate(rq.requestedAt) + '</span></div>' +
             '<div style="color:var(--grey);margin-top:2px;">' + origin + '</div>' + (rq.plan && rq.plan.discPct ? '<div style="color:#15803d;font-weight:800;margin-top:2px;">🏷️ ' + subEsc(rq.plan.discName) + ' — ' + rq.plan.discPct + '% off (₹' + rq.plan.listPrice + ' → ₹' + rq.amount + ')</div>' : '') + (rq.note ? '<div style="color:var(--grey);margin-top:2px;">' + subEsc(rq.note) + '</div>' : '') +
+            (subReqTxn(wallet, rq) ? '<div style="margin-top:3px;font-family:monospace;color:#0369a1;word-break:break-all;">Txn ID: ' + subEsc(subReqTxn(wallet, rq)) + '</div>' : '') +
             '<div style="margin-top:4px;">' + st + (rq.decidedAt ? ' <span style="color:var(--grey);">• ' + saFmtWalletDate(rq.decidedAt) + '</span>' : '') + '</div>' +
             (rq.status === 'Rejected' && rq.decisionReason ? '<div style="color:#991b1b;margin-top:4px;">Reason: ' + subEsc(rq.decisionReason) + '</div>' : '') + '</div>';
     }).join('');
